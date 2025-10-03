@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoQuest: Emergency Helplines</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #34d399; border-radius: 10px; }
+        .eco-shadow { box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1), 0 4px 6px -2px rgba(16, 185, 129, 0.05); }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'eco-green': '#10b981', 
+                        'eco-blue': '#3b82f6', 
+                        'eco-dark': '#065f46', 
+                        'eco-earth': '#b8a37e',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-gray-800">
+
+    <!-- Firebase SDK Imports (Required for shared components like footer forms) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app, db, auth;
+
+        async function initializeFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) return;
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('Debug');
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Error during Firebase initialization:", error);
+            }
+        }
+
+        const getPublicCollectionRef = (collectionName) => {
+            return collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+        };
+        
+        window.handleNewsletterSubmit = async (event) => {
+            event.preventDefault();
+            // Simulating submission as full implementation is in index.html
+            console.log("Newsletter subscription simulated.");
+        };
+
+        window.addEventListener('load', initializeFirebase);
+        
+        // Mobile Menu Toggle
+        window.toggleMobileMenu = () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        };
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('mobile-menu-button').addEventListener('click', window.toggleMobileMenu);
+        });
+
+        const HELPLINES_DATA = {
+            'Global Emergency': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '1091', 'Child Helpline': '1098' },
+            'Andhra Pradesh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Women\'s Helpline': '181' },
+            'Arunachal Pradesh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Child Helpline': '1098' },
+            'Assam': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Women\'s Helpline': '181' },
+            'Bihar': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Health Helpline': '104' },
+            'Chhattisgarh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Child Helpline': '1098' },
+            'Goa': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Coastal Security': '1093', 'Tourism Helpline': '1364' },
+            'Gujarat': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Child Helpline': '1098' },
+            'Haryana': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Health Helpline': '104' },
+            'Himachal Pradesh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Tourism Helpline': '1364' },
+            'Jharkhand': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Child Helpline': '1098' },
+            'Karnataka': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Women\'s Helpline': '181' },
+            'Kerala': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Health Helpline': '104' },
+            'Madhya Pradesh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Child Helpline': '1098' },
+            'Maharashtra': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Coastal Security': '1093', 'Disaster Management': '1070' },
+            'Manipur': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Women\'s Helpline': '181' },
+            'Meghalaya': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Child Helpline': '1098' },
+            'Mizoram': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Health Helpline': '104' },
+            'Nagaland': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Women\'s Helpline': '181' },
+            'Odisha': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Child Helpline': '1098' },
+            'Punjab': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Health Helpline': '104' },
+            'Rajasthan': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Child Helpline': '1098' },
+            'Sikkim': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Tourism Helpline': '1364' },
+            'Tamil Nadu': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Child Helpline': '1098' },
+            'Telangana': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Health Helpline': '104' },
+            'Tripura': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Women\'s Helpline': '181' },
+            'Uttar Pradesh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '1090', 'Health Helpline': '104' },
+            'Uttarakhand': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Tourism Helpline': '1364' },
+            'West Bengal': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Child Helpline': '1098' },
+            'Delhi (NCT)': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Child Helpline': '1098' },
+            'Andaman & Nicobar': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Coastal Security': '1093', 'Disaster Management': '1070' },
+            'Chandigarh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Child Helpline': '1098' },
+            'Dadra & Nagar Haveli and Daman & Diu': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Coastal Security': '1093', 'Women\'s Helpline': '181' },
+            'Jammu & Kashmir': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Health Helpline': '104' },
+            'Ladakh': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Disaster Management': '1070', 'Child Helpline': '1098' },
+            'Lakshadweep': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Coastal Security': '1093', 'Health Helpline': '104' },
+            'Puducherry': { 'Police': '100', 'Ambulance': '108', 'Fire Service': '101', 'Women\'s Helpline': '181', 'Disaster Management': '1070' }
+        };
+
+        const SERVICE_ICONS = {
+            'Police': '🚨', 'Ambulance': '🚑', 'Fire Service': '🚒', 'Disaster Management': '⚠️',
+            'Women\'s Helpline': '👩‍⚖️', 'Child Helpline': '👶', 'Coastal Security': '⚓',
+            'Health Helpline': '⚕️', 'Tourism Helpline': '🗺️'
+        };
+
+        const loadStates = () => {
+            const select = document.getElementById('state-select');
+            const states = ['Select Your State/UT', ...Object.keys(HELPLINES_DATA).sort()];
+            
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state;
+                option.textContent = state;
+                if (state === 'Select Your State/UT') option.disabled = true;
+                select.appendChild(option);
+            });
+
+            // Set initial state display
+            loadHelplines('Global Emergency');
+        };
+
+        const loadHelplines = (state) => {
+            const displayArea = document.getElementById('helplines-display');
+            const data = HELPLINES_DATA[state];
+
+            if (!data || state === 'Select Your State/UT') {
+                displayArea.innerHTML = '<div class="p-6 text-center text-gray-500">Please select a State or Union Territory to view specific helplines.</div>';
+                document.getElementById('download-pdf-button').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('download-pdf-button').classList.remove('hidden');
+            
+            let html = `<div class="p-6 bg-white rounded-xl shadow-lg">
+                <h3 class="text-2xl font-bold text-eco-dark mb-4">${state} Helplines</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+
+            for (const [service, number] of Object.entries(data)) {
+                const icon = SERVICE_ICONS[service] || '📞';
+                html += `
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <span class="text-2xl mr-3 flex-shrink-0">${icon}</span>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">${service}</p>
+                            <p class="text-xl font-extrabold text-red-600">${number}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `</div></div>`;
+            displayArea.innerHTML = html;
+        };
+
+        window.handleStateChange = (event) => {
+            loadHelplines(event.target.value);
+        };
+        
+        window.downloadHelplines = () => {
+            const state = document.getElementById('state-select').value;
+            const element = document.getElementById('helplines-display').querySelector('div'); // Target the inner card
+            
+            const options = {
+                margin: 10,
+                filename: `EcoQuest_Helplines_${state.replace(/ /g, '_')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Use the PDF library
+            html2pdf().set(options).from(element).save();
+        };
+
+        // --- Gemini AI Safety Coach ---
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`;
+        
+        const generateAdvice = async (prompt) => {
+            const apiKey = ""; 
+            const submitButton = document.getElementById('safety-coach-button');
+            const outputArea = document.getElementById('ai-coach-output');
+            
+            submitButton.disabled = true;
+            outputArea.innerHTML = '<p class="text-center text-eco-blue font-medium p-4"><svg class="animate-spin inline-block h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Analyzing scenario and preparing advice...</p>';
+            
+            const systemPrompt = `You are the EcoQuest Safety Coach. Your role is to analyze simple, hypothetical safety scenarios for students and provide a clear, concise 3-step action plan in bullet points. Conclude by explicitly stating which general Indian helpline (100, 101, or 108) is most relevant, or if they should call a non-emergency number like 1098.`;
+            const userQuery = `Analyze this scenario and provide advice: "${prompt}"`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(API_URL + apiKey, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't analyze the scenario right now.";
+                
+                outputArea.innerHTML = renderMarkdown(text);
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                outputArea.innerHTML = `<p class="text-red-500 font-bold p-4 bg-red-100 rounded-xl">Error: Failed to fetch AI advice. Please check your network connection.</p>`;
+            } finally {
+                submitButton.disabled = false;
+            }
+        };
+
+        const renderMarkdown = (markdownText) => {
+            let html = markdownText
+                .replace(/^\* (.*$)/gim, '<li class="ml-6 list-disc text-gray-700">$1</li>')
+                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+            return `<div class="prose max-w-none p-2">${html}</div>`;
+        };
+
+        window.handleScenarioSubmit = (event) => {
+            event.preventDefault();
+            const prompt = document.getElementById('scenario-input').value;
+            if (prompt) {
+                generateAdvice(prompt);
+            } else {
+                document.getElementById('ai-coach-output').innerHTML = '<p class="text-red-500 p-4">Please enter a scenario.</p>';
+            }
+        };
+
+        window.addEventListener('load', loadStates); 
+
+    </script>
+    
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-md">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            <a href="index.html" class="text-2xl font-extrabold text-eco-dark flex items-center">
+                <svg class="w-6 h-6 mr-2 text-eco-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.208 5 7.5 5A4.5 4.5 0 003 9.5c0 1.488.397 2.942 1.054 4.195 1.54 2.89 4.385 4.904 7.29 5.549 2.906-.645 5.75-2.66 7.29-5.549.657-1.253 1.054-2.707 1.054-4.195A4.5 4.5 0 0016.5 5c-1.708 0-3.332.477-4.5 1.253z"></path></svg>
+                EcoQuest
+            </a>
+            
+            <!-- Desktop Menu -->
+            <div class="hidden lg:flex space-x-6 text-sm font-medium">
+                <a href="index.html" class="text-gray-600 hover:text-eco-green transition duration-300">Home</a>
+                <a href="about_impact.html" class="text-gray-600 hover:text-eco-green transition duration-300">About Us</a>
+                <a href="student_dashboard.html" class="text-gray-600 hover:text-eco-green transition duration-300">Students</a>
+                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green transition duration-300">Teachers</a>
+                <a href="emergency_helplines.html" class="text-red-500 font-bold border-b-2 border-red-500 transition duration-300">Helplines</a>
+                <a href="index.html#contact" class="text-gray-600 hover:text-eco-green transition duration-300">Contact</a>
+            </div>
+
+            <!-- CTA Button -->
+            <a href="student_dashboard.html" class="hidden sm:block px-4 py-2 bg-eco-green text-white text-sm font-semibold rounded-full hover:bg-eco-dark transition duration-300 eco-shadow">
+                Go to Dashboard
+            </a>
+
+            <!-- Mobile Menu Button (Hamburger) -->
+            <button id="mobile-menu-button" class="lg:hidden p-2 text-gray-600 hover:text-eco-green transition duration-300 rounded-lg focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-menu" class="hidden lg:hidden bg-white shadow-xl py-4 absolute w-full transition-all duration-300 ease-in-out">
+            <div class="flex flex-col space-y-3 px-4">
+                <a href="index.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Home</a>
+                <a href="about_impact.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">About Us</a>
+                <a href="student_dashboard.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Students</a>
+                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Teachers</a>
+                <a href="emergency_helplines.html" class="text-red-500 font-bold py-1" onclick="window.toggleMobileMenu()">Helplines</a>
+                <a href="index.html#contact" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Contact</a>
+                <a href="student_dashboard.html" class="mt-4 px-4 py-2 text-center bg-eco-blue text-white font-semibold rounded-full hover:bg-blue-600 transition duration-300 eco-shadow" onclick="window.toggleMobileMenu()">Go to Dashboard</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="py-16 bg-red-50 min-h-screen">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 class="text-4xl font-extrabold text-red-600 mb-2">Emergency Helplines – Stay Safe, Stay Aware.</h1>
+            <p class="text-lg text-gray-600 mb-12">Quick access to critical helplines by State/UT. Every student should know these numbers to protect themselves and their community during crises.</p>
+
+            <!-- Helpline Selector and Display -->
+            <div class="grid lg:grid-cols-3 gap-8">
+                
+                <!-- Selector -->
+                <div class="lg:col-span-1 p-6 bg-white rounded-xl shadow-lg border border-red-200">
+                    <label for="state-select" class="block text-lg font-semibold text-gray-800 mb-3">
+                        1. Select Your State/UT
+                    </label>
+                    <select id="state-select" onchange="window.handleStateChange(event)" 
+                            class="w-full p-3 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-red-500 focus:border-red-500 mb-6">
+                        <!-- Options injected by JS -->
+                    </select>
+
+                    <button id="download-pdf-button" onclick="window.downloadHelplines()" 
+                            class="w-full px-4 py-3 bg-red-500 text-white font-bold rounded-lg hover:bg-red-700 transition duration-300 flex items-center justify-center hidden">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download as PDF (for offline use)
+                    </button>
+                </div>
+
+                <!-- Display Area -->
+                <div id="helplines-display" class="lg:col-span-2">
+                    <!-- Helplines injected here by JS -->
+                    <div class="p-6 bg-white rounded-xl shadow-lg">
+                        <h3 class="text-2xl font-bold text-eco-dark mb-4">Global Emergency Helplines</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <span class="text-2xl mr-3 flex-shrink-0">🚨</span>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-600">Police</p>
+                                    <p class="text-xl font-extrabold text-red-600">100</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <span class="text-2xl mr-3 flex-shrink-0">🚑</span>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-600">Ambulance</p>
+                                    <p class="text-xl font-extrabold text-red-600">108</p>
+                                </div>
+                            </div>
+                            <!-- ... other global numbers added by JS on load ... -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Safety Coach Section -->
+            <div class="mt-16 p-8 bg-white rounded-2xl shadow-2xl border-l-8 border-eco-blue">
+                <h2 class="text-3xl font-bold text-eco-dark mb-4 flex items-center">
+                    <span class="text-4xl mr-3">✨</span> SafeScenario AI Coach
+                </h2>
+                <p class="text-gray-600 mb-6">Type a hypothetical safety scenario (e.g., "I see a fire in my neighbor's house" or "My friend is being cyberbullied") to get an instant, 3-step action plan and identify the right helpline.</p>
+
+                <form onsubmit="window.handleScenarioSubmit(event)" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                    <input type="text" id="scenario-input" placeholder="Describe the safety situation for advice..." 
+                            class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-eco-blue focus:border-eco-blue">
+                    <button type="submit" id="safety-coach-button" 
+                            class="px-6 py-3 bg-eco-blue text-white font-bold rounded-lg hover:bg-blue-600 transition duration-300 flex justify-center items-center sm:w-auto">
+                        Get Action Plan
+                    </button>
+                </form>
+
+                <div id="ai-coach-output" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p class="text-gray-500">The AI action plan will appear here.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (Same as other pages) -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8">
+            
+            <!-- Logo & About -->
+            <div class="col-span-2 md:col-span-1">
+                <a href="index.html" class="text-2xl font-extrabold text-eco-green flex items-center mb-4">EcoQuest</a>
+                <p class="text-sm text-gray-400">Pioneering gamified, NEP 2020-aligned sustainability education for Indian students.</p>
+            </div>
+
+            <!-- Quick Links -->
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="about_impact.html" class="hover:text-eco-green transition duration-300">Our Mission</a></li>
+                    <li><a href="student_dashboard.html" class="hover:text-eco-green transition duration-300">Student Dashboard</a></li>
+                    <li><a href="teacher_portal.html" class="hover:text-eco-green transition duration-300">Teacher Portal</a></li>
+                    <li><a href="emergency_helplines.html" class="text-red-400 hover:text-red-500 transition duration-300">Emergency Helplines</a></li>
+                </ul>
+            </div>
+
+            <!-- Legal & Support -->
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Support</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="#" class="hover:text-eco-green transition duration-300">FAQ</a></li>
+                    <li><a href="#" class="hover:text-eco-green transition duration-300">Privacy Policy</a></li>
+                    <li><a href="#" class="hover:text-eco-green transition duration-300">Terms of Service</a></li>
+                    <li><a href="index.html#contact" class="hover:text-eco-green transition duration-300">Contact Support</a></li>
+                </ul>
+            </div>
+
+            <!-- Newsletter -->
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Stay Updated</h4>
+                <p class="text-sm text-gray-400 mb-4">Subscribe to our monthly Eco-Bulletin.</p>
+                <form onsubmit="window.handleNewsletterSubmit(event)" class="flex flex-col space-y-2">
+                    <input type="email" name="newsletter_email" placeholder="Your Email" class="p-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-eco-green" required>
+                    <button type="submit" class="bg-eco-green text-white font-semibold py-3 rounded-lg hover:bg-eco-dark transition duration-300">
+                        Subscribe
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 mt-10 border-t border-gray-700 pt-6 text-center">
+            <p class="text-sm text-gray-500">&copy; 2025 EcoQuest. All rights reserved. Made for a Greener India.</p>
+        </div>
+    </footer>
+</body>
+</html>

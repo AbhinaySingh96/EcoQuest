@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoQuest Student Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            min-height: 100vh;
+        }
+        .eco-shadow {
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1), 0 4px 6px -2px rgba(16, 185, 129, 0.05);
+        }
+        .eco-green { background-color: #10b981; }
+        .text-eco-dark { color: #065f46; }
+        .text-eco-green { color: #10b981; }
+        .text-eco-blue { color: #3b82f6; }
+        .hover\:bg-eco-dark:hover { background-color: #065f46; }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL VARIABLES (Provided by Canvas) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const LLM_MODEL = 'gemini-2.5-flash-preview-05-20'; // For text generation with grounding
+
+        // --- FIREBASE INSTANCES & STATE ---
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+        
+        const PUBLIC_COLLECTION_PATH = `/artifacts/${appId}/public/data/`;
+        const PRIVATE_COLLECTION_PATH = `/artifacts/${appId}/users/`;
+
+        const DEFAULT_STUDENT_DATA = {
+            name: "Eco-Champion",
+            level: 1,
+            points: 100,
+            badges: 1,
+            currentRank: 10,
+            challengesCompleted: 0
+        };
+
+        // --- INITIALIZATION ---
+
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                        // Start listeners only after auth is confirmed
+                        listenToStudentData();
+                        listenToLeaderboard();
+                    } else {
+                        isAuthReady = false;
+                        document.getElementById('user-id-display').textContent = "User ID: N/A (Auth Pending)";
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error during Firebase initialization or authentication:", error);
+            }
+        }
+        
+        // --- FIRESTORE LISTENERS ---
+
+        function listenToStudentData() {
+            if (!isAuthReady || !db || !userId) return;
+
+            const userDocRef = doc(db, PRIVATE_COLLECTION_PATH, userId, 'profile', 'data');
+            
+            onSnapshot(userDocRef, async (docSnap) => {
+                let data;
+                if (!docSnap.exists()) {
+                    // Initialize default profile if it doesn't exist
+                    data = DEFAULT_STUDENT_DATA;
+                    await setDoc(userDocRef, data);
+                } else {
+                    data = docSnap.data();
+                }
+                renderStudentData(data);
+            }, (error) => {
+                 console.error("Error listening to student data:", error);
+                 // Display a friendly message about security rules needed for private data
+                 document.getElementById('dashboard-status').innerHTML = '<p class="text-red-500 font-semibold">Error: Could not load profile data. Check your Firebase Security Rules (Private Data Path).</p>';
+            });
+        }
+
+        function listenToLeaderboard() {
+             if (!isAuthReady || !db) return;
+
+             const studentsRef = collection(db, PUBLIC_COLLECTION_PATH, 'students');
+             // Note: We use query, but for true Leaderboards, we fetch all/top 100 and sort client-side 
+             // to avoid requiring a composite index on the 'points' field in the security rules.
+             const q = query(studentsRef, limit(10)); // Just fetch top 10 documents
+
+             onSnapshot(q, (snapshot) => {
+                 let leaderboardData = snapshot.docs.map(doc => ({
+                     id: doc.id,
+                     ...doc.data()
+                 }));
+                 
+                 // Client-side sorting is necessary to avoid requiring a Firebase index error
+                 leaderboardData.sort((a, b) => (b.points || 0) - (a.points || 0));
+
+                 renderLeaderboard(leaderboardData);
+
+             }, (error) => {
+                 console.error("Error listening to leaderboard:", error);
+                 document.getElementById('leaderboard-container').innerHTML = `<p class="text-red-500 text-center py-4">Error: Could not load leaderboard. Check your Firebase Security Rules (Public Data Path).</p>`;
+             });
+        }
+
+        // --- RENDER FUNCTIONS ---
+        
+        function renderStudentData(data) {
+            document.getElementById('student-name').textContent = `Hi, ${data.name}!`;
+            document.getElementById('eco-points').textContent = (data.points || 100).toLocaleString();
+            document.getElementById('badges-unlocked').textContent = data.badges || 1;
+            document.getElementById('level-display').textContent = `Level ${data.level || 1}: The Eco-Champion`;
+            
+            // Render active missions (mocked for now, but linked to database structure)
+            const missionContainer = document.getElementById('active-missions-container');
+            if (data.challengesCompleted < 1) {
+                missionContainer.innerHTML = `
+                    <div class="p-4 bg-yellow-50/50 border border-yellow-300 rounded-lg">
+                        <p class="font-bold text-gray-800">Welcome Challenge: Set Up Profile</p>
+                        <p class="text-sm text-gray-500">Your first mission is complete! Now, try the Water Audit.</p>
+                        <a href="course_module_template.html" class="mt-2 inline-block text-eco-blue hover:underline text-sm font-semibold">Start Learning Modules →</a>
+                    </div>
+                `;
+            } else {
+                 missionContainer.innerHTML = `
+                    <div class="p-4 flex justify-between items-center bg-white border border-eco-green/30 rounded-lg hover:shadow-md transition duration-300">
+                        <div>
+                            <p class="font-bold text-gray-800">Water Wisdom Audit</p>
+                            <p class="text-sm text-gray-500">Log 5 days of personal water consumption.</p>
+                        </div>
+                        <span class="font-bold text-eco-green">+ 500 Pts</span>
+                        <a href="course_module_template.html" class="px-3 py-1 bg-eco-green text-white rounded-full text-xs hover:bg-eco-dark">Start Mission</a>
+                    </div>
+                    <div class="p-4 flex justify-between items-center bg-white border border-eco-blue/30 rounded-lg hover:shadow-md transition duration-300">
+                        <div>
+                            <p class="font-bold text-gray-800">Renewable Energy Quiz</p>
+                            <p class="text-sm text-gray-500">Score 80% or more on Module 3: Solar & Wind.</p>
+                        </div>
+                        <span class="font-bold text-eco-blue">+ 350 Pts</span>
+                        <a href="course_module_template.html" class="px-3 py-1 bg-eco-blue text-white rounded-full text-xs hover:bg-blue-600">Start Quiz</a>
+                    </div>
+                 `;
+            }
+        }
+
+        function renderLeaderboard(data) {
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = '';
+            
+            if (data.length === 0) {
+                 container.innerHTML = '<p class="text-gray-500 text-center py-4">No data yet. Be the first to earn points!</p>';
+                 return;
+            }
+
+            data.forEach((student, index) => {
+                const rank = index + 1;
+                const isCurrentUser = student.id === userId;
+                const badges = student.badges || 1;
+                const level = student.level || 1;
+
+                const rankClass = rank === 1 ? 'bg-yellow-500/20 text-yellow-700 font-extrabold' : 
+                                  rank === 2 ? 'bg-gray-300/20 text-gray-700 font-bold' :
+                                  rank === 3 ? 'bg-amber-700/20 text-amber-800 font-bold' :
+                                  'bg-gray-50 text-gray-600 font-semibold';
+                
+                const userHighlightClass = isCurrentUser ? 'border-2 border-eco-green ring-2 ring-eco-green/50' : 'border-gray-200';
+
+                const item = document.createElement('li');
+                item.className = `flex justify-between items-center p-3 rounded-xl ${userHighlightClass} transition duration-150 ease-in-out`;
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="w-8 h-8 flex items-center justify-center rounded-full ${rankClass} text-sm">${rank}</span>
+                        <div>
+                            <p class="font-semibold ${isCurrentUser ? 'text-eco-dark' : 'text-gray-800'}">${student.name || 'Champion'}</p>
+                            <span class="text-xs text-gray-500">Level ${level} | ${badges} Badges</span>
+                        </div>
+                    </div>
+                    <span class="text-lg font-bold text-eco-green">${(student.points || 0).toLocaleString()} Pts</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+
+        // --- GEMINI API INTEGRATION: LOCAL ACTION GENERATOR ---
+        
+        async function generateLocalChallenge(event) {
+            event.preventDefault();
+            const location = document.getElementById('local-location').value;
+            const issue = document.getElementById('local-issue').value;
+            const outputDiv = document.getElementById('challenge-output');
+            const submitButton = document.getElementById('generate-challenge-btn');
+
+            if (!location || !issue) {
+                outputDiv.innerHTML = '<p class="text-red-500">Please provide both a location and an environmental issue.</p>';
+                return;
+            }
+
+            // Show loading state
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<div class="spinner"></div> Generating Action...';
+            outputDiv.innerHTML = '<div class="text-center p-4 text-gray-500">Searching real-time data for local challenges...</div>';
+            
+            const systemPrompt = `You are the EcoQuest Local Action Generator. Your goal is to provide a single, highly specific, and actionable environmental challenge based on the user's location and issue. The response MUST be formatted in three sections: a Title, 3 Action Steps, and a Target Reward. Use real-time information when grounding is provided.`;
+            const userQuery = `Generate a local, real-world eco-challenge for a student in the following context: Location is "${location}". The primary environmental issue is "${issue}". The challenge must be something a student can complete in 1-2 days and verifiable. Provide the output in clean, structured Markdown.`;
+
+            const apiKey = ""; // Canvas provides this
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${LLM_MODEL}:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            const response = await fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Generate Local Challenge';
+
+            if (response.ok) {
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    const text = candidate.content.parts[0].text;
+                    let sources = [];
+
+                    const groundingMetadata = candidate.groundingMetadata;
+                    if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                        sources = groundingMetadata.groundingAttributions
+                            .map(attribution => ({
+                                uri: attribution.web?.uri,
+                                title: attribution.web?.title,
+                            }))
+                            .filter(source => source.uri && source.title);
+                    }
+
+                    renderChallengeOutput(text, sources);
+                } else {
+                    outputDiv.innerHTML = '<p class="text-red-500">Error: Could not generate challenge. Please try a different query.</p>';
+                }
+            } else {
+                 const errorText = await response.text();
+                 console.error("API Error:", errorText);
+                 outputDiv.innerHTML = `<p class="text-red-500">API Request Failed. Check console for details. (Status: ${response.status})</p>`;
+            }
+        }
+
+        function renderChallengeOutput(markdownText, sources) {
+            const outputDiv = document.getElementById('challenge-output');
+            
+            // Simple markdown rendering for display
+            let html = markdownText
+                .replace(/^#\s*(.*)$/gm, '<h3 class="text-xl font-bold text-eco-dark my-3">$1</h3>') // H3 for Title
+                .replace(/^\*\s*(.*)$/gm, '<li class="text-gray-700 list-disc ml-6">$1</li>') // List items
+                .replace(/\n\n/g, '<br><br>');
+
+            // If we have sources, add them
+            if (sources.length > 0) {
+                html += '<div class="mt-4 pt-3 border-t border-gray-100">';
+                html += '<p class="text-sm font-semibold text-gray-700 mb-1">Sources Used:</p>';
+                sources.slice(0, 3).forEach(source => {
+                    html += `<p class="text-xs text-gray-500 truncate"><a href="${source.uri}" target="_blank" class="hover:underline">${source.title}</a></p>`;
+                });
+                html += '</div>';
+            }
+
+            outputDiv.innerHTML = `<div class="p-4 bg-gray-50 rounded-xl shadow-inner">${html}</div>`;
+        }
+        
+        // --- UTILITY FOR RETRYING API CALLS (Exponential Backoff) ---
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status !== 429) { // 429 is Too Many Requests
+                        return response;
+                    }
+                    // Implement exponential backoff for 429 errors
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    console.warn(`Rate limit hit. Retrying in ${delay / 1000}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } catch (error) {
+                    // Non-rate limit error, rethrow unless it's the last attempt
+                    if (i === maxRetries - 1) throw error;
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    console.warn(`Fetch error. Retrying in ${delay / 1000}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            throw new Error("Maximum retry attempts reached.");
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', initializeFirebase);
+    </script>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Navigation Bar (Standardized) -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-md">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            <a href="index.html" class="text-2xl font-extrabold text-eco-dark flex items-center">
+                <svg class="w-6 h-6 mr-2 text-eco-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.208 5 7.5 5A4.5 4.5 0 003 9.5c0 1.488.397 2.942 1.054 4.195 1.54 2.89 4.385 4.904 7.29 5.549 2.906-.645 5.75-2.66 7.29-5.549.657-1.253 1.054-2.707 1.054-4.195A4.5 4.5 0 0016.5 5c-1.708 0-3.332.477-4.5 1.253z"></path></svg>
+                EcoQuest
+            </a>
+            
+            <div class="hidden lg:flex space-x-6 text-sm font-medium">
+                <a href="index.html" class="text-gray-600 hover:text-eco-green transition duration-300">Home</a>
+                <a href="about_impact.html" class="text-gray-600 hover:text-eco-green transition duration-300">About Us</a>
+                <a href="student_dashboard.html" class="text-eco-green font-bold transition duration-300">Students</a>
+                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green transition duration-300">Teachers</a>
+                <a href="emergency_helplines.html" class="text-gray-600 hover:text-eco-green transition duration-300">Helplines</a>
+            </div>
+
+            <a href="#active-missions-container" class="hidden sm:block px-4 py-2 eco-green text-white text-sm font-semibold rounded-full hover:bg-eco-dark transition duration-300 shadow-md">
+                Active Missions
+            </a>
+
+            <!-- Mobile Menu Button (Placeholder for JavaScript toggle) -->
+            <button id="mobile-menu-button" class="lg:hidden p-2 text-gray-600 hover:text-eco-green transition duration-300 rounded-lg focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+    </header>
+
+    <main class="flex-grow py-16 bg-eco-green/10">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 id="student-name" class="text-4xl font-extrabold text-gray-900 mb-2 text-center">Hi, Champion!</h1>
+            <p id="level-display" class="text-xl text-center text-eco-dark mb-10">Level 1: The Eco-Beginner</p>
+            
+            <div class="flex justify-center mb-6">
+                <span id="user-id-display" class="text-sm font-mono text-gray-500 bg-white p-2 rounded-lg shadow-inner">User ID: Loading...</span>
+            </div>
+
+            <!-- Dashboard Content Grid -->
+            <div class="grid lg:grid-cols-3 gap-8">
+                
+                <!-- Left Column: Progress & Stats -->
+                <aside class="lg:col-span-1 space-y-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Your Progress</h2>
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                        <p class="text-sm text-gray-500">Eco-Points Earned:</p>
+                        <p id="eco-points" class="text-4xl font-extrabold text-yellow-600">Loading...</p>
+                        <p class="text-sm text-gray-400 mt-2">Points drive your rank and rewards.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-eco-green">
+                        <p class="text-sm text-gray-500">Badges Unlocked:</p>
+                        <p id="badges-unlocked" class="text-4xl font-extrabold text-eco-dark">Loading...</p>
+                        <p class="text-sm text-gray-400 mt-2">Mastery in specific eco-themes.</p>
+                    </div>
+                    
+                    <!-- Leaderboard Preview -->
+                    <div id="leaderboard-container" class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold text-eco-dark mb-4 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-yellow-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M5.5 10a.5.5 0 01.5-.5h8a.5.5 0 010 1h-8a.5.5 0 01-.5-.5zM5 7a.5.5 0 01.5-.5h8a.5.5 0 010 1h-8A.5.5 0 015 7zM5.5 13a.5.5 0 00-.5.5h8a.5.5 0 000 1h-8a.5.5 0 00.5-.5z" clip-rule="evenodd"></path></svg>
+                            Top 10 Leaders
+                        </h3>
+                        <ul id="leaderboard-list" class="space-y-3">
+                            <li class="text-center text-gray-500">Loading leaderboard...</li>
+                        </ul>
+                    </div>
+
+                </aside>
+
+                <!-- Right Column: Missions & AI Challenges -->
+                <section class="lg:col-span-2 space-y-8">
+                    
+                    <!-- Active Missions -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 pb-2 border-b">Active Missions</h2>
+                        <div id="active-missions-container" class="space-y-4">
+                             <!-- Missions are rendered here by renderStudentData() -->
+                            <div class="text-center py-4 text-gray-500">Loading your missions...</div>
+                        </div>
+                    </div>
+
+                    <!-- AI Local Challenge Generator -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-2 border-eco-blue">
+                        <h2 class="text-2xl font-bold text-eco-blue mb-4 pb-2 border-b">✨ Local Action Generator</h2>
+                        <p class="text-gray-600 mb-4">Input your location and a local issue to get a verified, actionable eco-challenge specific to your community.</p>
+
+                        <form id="local-challenge-form" onsubmit="generateLocalChallenge(event)">
+                            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label for="local-location" class="block text-sm font-medium text-gray-700">Your City/Locality (e.g., Pune, Maharashtra)</label>
+                                    <input type="text" id="local-location" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-eco-blue focus:border-eco-blue" required>
+                                </div>
+                                <div>
+                                    <label for="local-issue" class="block text-sm font-medium text-gray-700">Environmental Issue (e.g., monsoon flooding, plastic pollution, heatwave)</label>
+                                    <input type="text" id="local-issue" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-eco-blue focus:border-eco-blue" required>
+                                </div>
+                            </div>
+                            <button type="submit" id="generate-challenge-btn" class="w-full px-4 py-3 bg-eco-blue text-white font-bold rounded-lg hover:bg-blue-600 transition duration-300 flex items-center justify-center">
+                                Generate Local Challenge
+                            </button>
+                        </form>
+
+                        <div id="challenge-output" class="mt-6">
+                            <p class="text-gray-500">Your AI-generated challenge will appear here.</p>
+                        </div>
+                    </div>
+                    
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (Standardized) -->
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div>
+                    <h4 class="font-bold mb-4">EcoQuest</h4>
+                    <p class="text-sm text-gray-400">Learn. Act. Sustain.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="about_impact.html" class="text-gray-400 hover:text-white">About Us</a></li>
+                        <li><a href="teacher_portal.html" class="text-gray-400 hover:text-white">For Teachers</a></li>
+                        <li><a href="emergency_helplines.html" class="text-gray-400 hover:text-white">Helplines</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Support</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="index.html#contact" class="text-gray-400 hover:text-white">Contact</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Join Our Newsletter</h4>
+                    <form onsubmit="event.preventDefault(); alert('Newsletter signup simulated. Thank you!');">
+                        <input type="email" placeholder="Your Email" class="w-full px-3 py-2 rounded-lg text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-eco-green mb-3" required>
+                        <button type="submit" class="w-full py-2 eco-green text-white font-semibold rounded-lg hover:bg-eco-dark transition duration-300 shadow-md">Subscribe</button>
+                    </form>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-500">
+                &copy; 2025 EcoQuest Platform. All rights reserved. Aligned with NEP 2020.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

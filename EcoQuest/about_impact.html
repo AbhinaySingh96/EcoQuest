@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoQuest: About Us & Impact</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #34d399; border-radius: 10px; }
+        .eco-shadow { box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1), 0 4px 6px -2px rgba(16, 185, 129, 0.05); }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'eco-green': '#10b981', 
+                        'eco-blue': '#3b82f6', 
+                        'eco-dark': '#065f46', 
+                        'eco-earth': '#b8a37e',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-gray-800">
+
+    <!-- Firebase SDK Imports (Required for shared components like footer forms) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app, db, auth;
+
+        async function initializeFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) return;
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('Debug');
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Error during Firebase initialization:", error);
+            }
+        }
+
+        const getPublicCollectionRef = (collectionName) => {
+            return collection(db, 'artifacts', appId, 'public', 'data', collectionName);
+        };
+        
+        window.handleNewsletterSubmit = async (event) => {
+            event.preventDefault();
+            const form = event.target;
+            const submitButton = form.querySelector('button');
+            const originalButtonText = submitButton.innerHTML;
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = 'Submitting...';
+
+            try {
+                if (!db) {
+                    console.error("Database not initialized for newsletter.");
+                    return;
+                }
+                
+                const formData = {
+                    email: form.newsletter_email.value,
+                    type: 'newsletter',
+                    timestamp: serverTimestamp(),
+                };
+
+                const docRef = doc(getPublicCollectionRef('leads'), crypto.randomUUID());
+                await setDoc(docRef, formData);
+
+                form.reset();
+                console.log("Newsletter subscription saved.");
+                
+            } catch (error) {
+                console.error("Error saving form submission:", error);
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            }
+        };
+
+        window.addEventListener('load', initializeFirebase);
+
+        // Mobile Menu Toggle
+        window.toggleMobileMenu = () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        };
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('mobile-menu-button').addEventListener('click', window.toggleMobileMenu);
+        });
+    </script>
+
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-md">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            <a href="index.html" class="text-2xl font-extrabold text-eco-dark flex items-center">
+                <svg class="w-6 h-6 mr-2 text-eco-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.208 5 7.5 5A4.5 4.5 0 003 9.5c0 1.488.397 2.942 1.054 4.195 1.54 2.89 4.385 4.904 7.29 5.549 2.906-.645 5.75-2.66 7.29-5.549.657-1.253 1.054-2.707 1.054-4.195A4.5 4.5 0 0016.5 5c-1.708 0-3.332.477-4.5 1.253z"></path></svg>
+                EcoQuest
+            </a>
+            
+            <!-- Desktop Menu -->
+            <div class="hidden lg:flex space-x-6 text-sm font-medium">
+                <a href="index.html" class="text-gray-600 hover:text-eco-green transition duration-300">Home</a>
+                <a href="about_impact.html" class="text-eco-dark font-bold border-b-2 border-eco-dark transition duration-300">About Us</a>
+                <a href="student_dashboard.html" class="text-gray-600 hover:text-eco-green transition duration-300">Students</a>
+                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green transition duration-300">Teachers</a>
+                <a href="emergency_helplines.html" class="text-red-500 hover:text-red-700 font-bold transition duration-300">Helplines</a>
+                <a href="index.html#contact" class="text-gray-600 hover:text-eco-green transition duration-300">Contact</a>
+            </div>
+
+            <!-- CTA Button -->
+            <a href="student_dashboard.html" class="hidden sm:block px-4 py-2 bg-eco-green text-white text-sm font-semibold rounded-full hover:bg-eco-dark transition duration-300 eco-shadow">
+                Go to Dashboard
+            </a>
+
+            <!-- Mobile Menu Button (Hamburger) -->
+            <button id="mobile-menu-button" class="lg:hidden p-2 text-gray-600 hover:text-eco-green transition duration-300 rounded-lg focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-menu" class="hidden lg:hidden bg-white shadow-xl py-4 absolute w-full transition-all duration-300 ease-in-out">
+            <div class="flex flex-col space-y-3 px-4">
+                <a href="index.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Home</a>
+                <a href="about_impact.html" class="text-eco-dark font-bold py-1" onclick="window.toggleMobileMenu()">About Us</a>
+                <a href="student_dashboard.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Students</a>
+                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Teachers</a>
+                <a href="emergency_helplines.html" class="text-red-500 hover:text-red-700 font-bold py-1" onclick="window.toggleMobileMenu()">Helplines</a>
+                <a href="index.html#contact" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Contact</a>
+                <a href="student_dashboard.html" class="mt-4 px-4 py-2 text-center bg-eco-blue text-white font-semibold rounded-full hover:bg-blue-600 transition duration-300 eco-shadow" onclick="window.toggleMobileMenu()">Go to Dashboard</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- About Us Section -->
+        <section id="about" class="py-24 bg-gray-50">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h1 class="text-4xl font-bold text-center text-eco-dark mb-16">Our Mission & Policy Alignment</h1>
+                
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-gray-900 mb-4">Cultivating Eco-Conscious Citizens</h2>
+                        <p class="text-gray-600 mb-6">
+                            Our vision is to cultivate a generation of environmentally conscious and proactive citizens. We empower students with the knowledge and motivation to address local and global environmental challenges through practical, action-oriented learning.
+                        </p>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <span class="p-2 rounded-full bg-eco-green/20 text-eco-dark flex-shrink-0 mr-3">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </span>
+                                <p class="text-gray-700 font-medium">NEP 2020 Focus: Integrated, experiential, and skill-based education is the core of our platform.</p>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="p-2 rounded-full bg-eco-blue/20 text-eco-blue flex-shrink-0 mr-3">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 001-1-1v-4a1 1 0011-1h2a1 1 0011-1v4a1 1 001-1 1m-6 0h6"></path></svg>
+                                </span>
+                                <p class="text-gray-700 font-medium">SDG Alignment: Goal 4 (Quality Education) & Goal 13 (Climate Action).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Founding Team/Partner Placeholder -->
+                    <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">Our Visionaries</h3>
+                        <div class="space-y-3 text-gray-600">
+                            <p><strong>Founding Team:</strong> A blend of Indian EdTech professionals, environmental scientists, and youth development specialists.</p>
+                            <p><strong>Advisory Board:</strong> Educators and Policy Experts focusing on sustainable pedagogy and curriculum integration.</p>
+                            <p class="pt-2 text-sm text-gray-500">We believe in collaboration to drive systemic educational change across India.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Impact & Data Section -->
+        <section id="impact" class="py-24 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-4xl font-bold text-center text-gray-900 mb-16">Measuring Our Collective Impact</h2>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                    
+                    <!-- Metric 1: Students Engaged -->
+                    <div class="p-6 bg-eco-green/10 rounded-xl shadow-lg border border-gray-100">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-eco-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20v-2c0-.656-.126-1.283-.356-1.857M9 20H4v-2a3 3 0 015-2.236M9 20v-2a3 3 0 00-5.356-1.857M12 11c0 1.905-2.73 3.69-5.184 4.195a1.5 1.5 0 01-1.632-.123C3.62 14.73 3 13.52 3 12c0-3.313 3.582-6 8-6 4.418 0 8 2.687 8 6 0 1.52-.62 2.73-1.184 3.992a1.5 1.5 0 01-1.632.123C13.73 14.69 11 12.905 11 11z"></path></svg>
+                        <p class="text-4xl font-extrabold text-eco-dark">120K+</p>
+                        <p class="mt-2 text-gray-600 font-medium">Students Engaged</p>
+                    </div>
+
+                    <!-- Metric 2: Trees Planted (Virtual + Real) -->
+                    <div class="p-6 bg-eco-blue/10 rounded-xl shadow-lg border border-gray-100">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-eco-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 10-4 0v4H6l-2 5h12l-2-5h-1V4z"></path></svg>
+                        <p class="text-4xl font-extrabold text-eco-dark">4,500</p>
+                        <p class="mt-2 text-gray-600 font-medium">Trees Planted (Verified)</p>
+                    </div>
+
+                    <!-- Metric 3: Water Saved -->
+                    <div class="p-6 bg-yellow-500/10 rounded-xl shadow-lg border border-gray-100">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        <p class="text-4xl font-extrabold text-eco-dark">5M+ L</p>
+                        <p class="mt-2 text-gray-600 font-medium">Water Saved (Estimated)</p>
+                    </div>
+
+                    <!-- Metric 4: Eco-Challenges Completed -->
+                    <div class="p-6 bg-purple-500/10 rounded-xl shadow-lg border border-gray-100">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a12.004 12.004 0 00-8.204 4.095m0 0a12 12 0 0015.694 1.34M2.999 7h.001v.001H2.999zM21 7h.001v.001H21zM11 19l-4-4-4 4"></path></svg>
+                        <p class="text-4xl font-extrabold text-eco-dark">35K+</p>
+                        <p class="mt-2 text-gray-600 font-medium">Challenges Completed</p>
+                    </div>
+                </div>
+
+                <!-- NGO & Government Partners Section -->
+                <div id="partners" class="pt-20 lg:col-span-4">
+                    <h3 class="text-3xl font-bold text-center text-eco-blue mb-10">Our Esteemed Partners</h3>
+                    <div class="flex flex-wrap justify-center items-center gap-8 md:gap-16">
+                        <!-- Partner Logos (Placeholder) -->
+                        <div class="w-24 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-sm text-gray-500 font-bold border border-gray-300">NGO 1</div>
+                        <div class="w-24 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-sm text-gray-500 font-bold border border-gray-300">Govt Dept</div>
+                        <div class="w-24 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-sm text-gray-500 font-bold border border-gray-300">University</div>
+                        <div class="w-24 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-sm text-gray-500 font-bold border border-gray-300">Corporate</div>
+                    </div>
+                    <p class="text-center text-gray-500 mt-8 max-w-2xl mx-auto">
+                        We collaborate with NGOs and government bodies to ensure our curriculum is scientifically sound and leads to actionable, local impact. Interested in partnering? <a href="index.html#contact" class="text-eco-blue hover:underline">Contact us!</a>
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer (Same as other pages) -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8">
+            
+            <!-- Logo & About -->
+            <div class="col-span-2 md:col-span-1">
+                <a href="index.html" class="text-2xl font-extrabold text-eco-green flex items-center mb-4">EcoQuest</a>
+                <p class="text-sm text-gray-400">Pioneering gamified, NEP 2020-aligned sustainability education for Indian students.</p>
+            </div>
+
+            <!-- Quick Links -->
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="about_impact.html" class="hover:text-eco-green transition duration-300">Our Mission</a></li>
+                    <li><a href="student_dashboard.html" class="hover:text-eco-green transition duration-300">Student Dashboard</a></li>
+                    <li><a href="teacher_portal.html" class="hover:text-eco-green transition duration-300">Teacher Portal</a></li>
+                    <li><a href="emergency_helplines.html" class="text-red-400 hover:text-red-500 transition duration-300">Emergency Helplines</a></li>
+                </ul>
+            </div>
+
+            <!-- Legal & Support -->
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Support</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li><a href="#" class="hover:text-eco-green transition duration-300">FAQ</a></li>
+                    <li><a href="#" class="hover:text-eco-green transition duration-300">Privacy Policy</a></li>
+                    <li><a href="#" class="hover:text-eco-green transition duration-300">Terms of Service</a></li>
+                    <li><a href="index.html#contact" class="hover:text-eco-green transition duration-300">Contact Support</a></li>
+                </ul>
+            </div>
+
+            <!-- Newsletter -->
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Stay Updated</h4>
+                <p class="text-sm text-gray-400 mb-4">Subscribe to our monthly Eco-Bulletin.</p>
+                <form onsubmit="window.handleNewsletterSubmit(event)" class="flex flex-col space-y-2">
+                    <input type="email" name="newsletter_email" placeholder="Your Email" class="p-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-eco-green" required>
+                    <button type="submit" class="bg-eco-green text-white font-semibold py-3 rounded-lg hover:bg-eco-dark transition duration-300">
+                        Subscribe
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 mt-10 border-t border-gray-700 pt-6 text-center">
+            <p class="text-sm text-gray-500">&copy; 2025 EcoQuest. All rights reserved. Made for a Greener India.</p>
+        </div>
+    </footer>
+</body>
+</html>

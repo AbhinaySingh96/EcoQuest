@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoQuest Teacher Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL VARIABLES (Provided by Canvas) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // --- FIREBASE INSTANCES ---
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        const PUBLIC_COLLECTION_PATH = `/artifacts/${appId}/public/data/`;
+        const PRIVATE_COLLECTION_PATH = `/artifacts/${appId}/users/`;
+
+        // Mock data for initial teacher analytics (should be fetched from a teacher/school document later)
+        let teacherAnalytics = {
+            studentsEngaged: 450,
+            challengesVerified: 120,
+            schoolRank: 4
+        };
+
+        function getIcon(service) {
+            const icons = {
+                police: '🚓', ambulance: '🚑', fire: '🚒', disaster: '🚨', women: '♀️', child: '👶', forest: '🌳', health: '🏥', default: '📞'
+            };
+            const lowerService = service.toLowerCase();
+            if (lowerService.includes('police')) return icons.police;
+            if (lowerService.includes('ambulance') || lowerService.includes('health')) return icons.ambulance;
+            if (lowerService.includes('fire')) return icons.fire;
+            if (lowerService.includes('disaster')) return icons.disaster;
+            if (lowerService.includes('women')) return icons.women;
+            if (lowerService.includes('child')) return icons.child;
+            if (lowerService.includes('forest')) return icons.forest;
+            return icons.default;
+        }
+        
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Sign in using custom token or anonymously if not available
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        console.log("Firebase Auth Ready. User ID:", userId);
+                        document.getElementById('teacher-id-display').textContent = `Teacher ID: ${userId}`;
+                        // Start listeners only after auth is confirmed
+                        listenToChallengeSubmissions();
+                        renderTeacherAnalytics();
+                    } else {
+                         // If auth fails, we still set isAuthReady to false and log.
+                        console.error("Authentication Failed. Running anonymously or not at all.");
+                        isAuthReady = false;
+                        document.getElementById('teacher-id-display').textContent = "Teacher ID: N/A (Auth Pending)";
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error during Firebase initialization or authentication:", error);
+                document.getElementById('teacher-id-display').textContent = "Error: Auth Failed";
+            }
+        }
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderTeacherAnalytics() {
+            document.getElementById('engaged-students-count').textContent = teacherAnalytics.studentsEngaged;
+            document.getElementById('challenges-verified-count').textContent = teacherAnalytics.challengesVerified;
+            document.getElementById('school-rank').textContent = `#${teacherAnalytics.schoolRank}`;
+        }
+
+        function renderChallengeQueue(challenges) {
+            const container = document.getElementById('verification-queue-container');
+            container.innerHTML = ''; // Clear existing list
+            
+            if (challenges.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">No pending challenges to verify. Great job!</p>';
+                return;
+            }
+
+            challenges.forEach(challenge => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-5 rounded-xl shadow-md border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0';
+                card.innerHTML = `
+                    <div class="flex-grow">
+                        <p class="text-lg font-bold text-gray-800">${challenge.title}</p>
+                        <p class="text-sm text-gray-600 mb-2">Student: ${challenge.studentName || 'Anonymous'} (ID: ${challenge.userId.substring(0, 8)}...)</p>
+                        <p class="text-sm font-medium text-eco-dark">Reward: +${challenge.points} Eco-Points</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                        <a href="#" onclick="event.preventDefault(); alert('Simulating opening file storage link for proof: ${challenge.proofDetails}');" class="text-sm font-medium text-eco-blue hover:underline p-2 rounded-lg border border-eco-blue/50 text-center transition duration-300">View Proof</a>
+                        <button id="approve-${challenge.id}" class="px-4 py-2 bg-eco-green text-white font-semibold rounded-lg hover:bg-eco-dark transition duration-300 text-sm">Approve</button>
+                        <button id="reject-${challenge.id}" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-700 transition duration-300 text-sm">Reject</button>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                // Attach event listeners
+                document.getElementById(`approve-${challenge.id}`).addEventListener('click', () => handleVerification(challenge.id, challenge.userId, challenge.points, true));
+                document.getElementById(`reject-${challenge.id}`).addEventListener('click', () => handleVerification(challenge.id, challenge.userId, challenge.points, false));
+            });
+        }
+
+        function displayError(message) {
+             const container = document.getElementById('verification-queue-container');
+             container.innerHTML = `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                                      <p class="font-bold">Permissions Error</p>
+                                      <p>${message}</p>
+                                      <p class="mt-2 text-sm font-semibold">ACTION REQUIRED: Please update your Firebase Security Rules to allow authenticated users to read and write to the public data collections.</p>
+                                    </div>`;
+        }
+
+        // --- FIRESTORE LISTENERS & HANDLERS ---
+        
+        function listenToChallengeSubmissions() {
+            if (!isAuthReady || !db) return;
+
+            const challengesRef = collection(db, PUBLIC_COLLECTION_PATH, 'challenges');
+            const q = query(challengesRef, where("status", "==", "Pending"));
+
+            onSnapshot(q, (snapshot) => {
+                const pendingChallenges = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                renderChallengeQueue(pendingChallenges);
+            }, (error) => {
+                console.error("Error listening to challenges:", error);
+                displayError(error.message);
+            });
+        }
+
+        async function handleVerification(challengeId, studentUserId, points, isApproved) {
+            if (!db || !userId) {
+                console.error("Database or User ID not ready.");
+                return;
+            }
+
+            // 1. Update Challenge Status (Public Collection)
+            const challengeDocRef = doc(db, PUBLIC_COLLECTION_PATH, 'challenges', challengeId);
+            
+            try {
+                await updateDoc(challengeDocRef, {
+                    status: isApproved ? "Verified" : "Rejected",
+                    verifierId: userId,
+                    verificationDate: new Date().toISOString()
+                });
+
+                if (isApproved) {
+                    // 2. Update Student Points (Private User Collection)
+                    const studentDocRef = doc(db, PRIVATE_COLLECTION_PATH, studentUserId, 'profile', 'data');
+                    
+                    const studentDoc = await getDoc(studentDocRef);
+                    if (studentDoc.exists()) {
+                        const currentPoints = studentDoc.data().points || 0;
+                        await updateDoc(studentDocRef, {
+                            points: currentPoints + points,
+                            challengesVerified: studentDoc.data().challengesVerified + 1 || 1 // Increment counter
+                        });
+                        alert(`Challenge Approved! Awarded ${points} points to user ${studentUserId}.`);
+                    } else {
+                         // Should not happen if student dashboard was visited first, but handle safety
+                        console.error("Student profile not found. Cannot award points.");
+                        alert(`Challenge Approved, but student profile not found. Points not awarded.`);
+                    }
+                    
+                    // 3. Update Teacher Analytics (Mock for now, would be a separate update)
+                    teacherAnalytics.challengesVerified++;
+                    renderTeacherAnalytics();
+
+                } else {
+                    alert(`Challenge Rejected for user ${studentUserId}.`);
+                }
+
+            } catch (error) {
+                console.error("Error during verification process:", error);
+                alert(`Verification FAILED due to a database error. Check console for details. (Permissions Issue?)`);
+            }
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', initializeFirebase);
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .eco-green { background-color: #10b981; }
+        .text-eco-dark { color: #065f46; }
+        .text-eco-green { color: #10b981; }
+        .text-eco-blue { color: #3b82f6; }
+        /* Add hover styles for Tailwind classes if needed */
+        .hover\:bg-eco-dark:hover { background-color: #065f46; }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Navigation Bar (Standardized) -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-md">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            <a href="index.html" class="text-2xl font-extrabold text-eco-dark flex items-center">
+                <svg class="w-6 h-6 mr-2 text-eco-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.208 5 7.5 5A4.5 4.5 0 003 9.5c0 1.488.397 2.942 1.054 4.195 1.54 2.89 4.385 4.904 7.29 5.549 2.906-.645 5.75-2.66 7.29-5.549.657-1.253 1.054-2.707 1.054-4.195A4.5 4.5 0 0016.5 5c-1.708 0-3.332.477-4.5 1.253z"></path></svg>
+                EcoQuest
+            </a>
+            
+            <div class="hidden lg:flex space-x-6 text-sm font-medium">
+                <a href="index.html" class="text-gray-600 hover:text-eco-green transition duration-300">Home</a>
+                <a href="about_impact.html" class="text-gray-600 hover:text-eco-green transition duration-300">About Us</a>
+                <a href="student_dashboard.html" class="text-gray-600 hover:text-eco-green transition duration-300">Students</a>
+                <a href="teacher_portal.html" class="text-eco-green font-bold transition duration-300">Teachers</a>
+                <a href="emergency_helplines.html" class="text-gray-600 hover:text-eco-green transition duration-300">Helplines</a>
+            </div>
+
+            <a href="student_dashboard.html" class="hidden sm:block px-4 py-2 eco-green text-white text-sm font-semibold rounded-full hover:bg-eco-dark transition duration-300 shadow-md">
+                My Dashboard
+            </a>
+
+            <!-- Mobile Menu Button (Placeholder for JavaScript toggle) -->
+            <button id="mobile-menu-button" class="lg:hidden p-2 text-gray-600 hover:text-eco-green transition duration-300 rounded-lg focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <!-- Mobile Menu Overlay (Not fully coded here for brevity, but link targets are set) -->
+    </header>
+
+    <main class="flex-grow py-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 class="text-4xl font-extrabold text-eco-dark mb-2 text-center">Educator Control Panel</h1>
+            <p class="text-xl text-center text-gray-600 mb-12">Monitor progress, verify student actions, and drive change.</p>
+
+            <div class="flex justify-center mb-6">
+                <span id="teacher-id-display" class="text-sm font-mono text-gray-500 bg-gray-100 p-2 rounded-lg">Teacher ID: Loading...</span>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                
+                <!-- Sidebar: Teacher Analytics -->
+                <aside class="lg:col-span-1 space-y-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">School Metrics</h2>
+                    
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-eco-green">
+                        <p class="text-sm text-gray-500">Total Students Engaged:</p>
+                        <p id="engaged-students-count" class="text-4xl font-extrabold text-eco-dark">Loading...</p>
+                        <p class="text-sm text-gray-400 mt-2">Across all monitored classes.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-eco-blue">
+                        <p class="text-sm text-gray-500">Challenges Verified:</p>
+                        <p id="challenges-verified-count" class="text-4xl font-extrabold text-eco-dark">Loading...</p>
+                        <p class="text-sm text-gray-400 mt-2">Actions validated by teachers.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                        <p class="text-sm text-gray-500">School Leaderboard Rank:</p>
+                        <p id="school-rank" class="text-4xl font-extrabold text-yellow-600">#4</p>
+                        <p class="text-sm text-gray-400 mt-2">City-wide ranking.</p>
+                    </div>
+                </aside>
+
+                <!-- Main Content: Verification Queue -->
+                <section class="lg:col-span-2">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 pb-2 border-b">Action Verification Queue</h2>
+                    <p class="text-gray-600 mb-4">Review student submissions for real-world tasks and award Eco-Points.</p>
+                    
+                    <div id="verification-queue-container" class="space-y-4">
+                        <!-- Challenge cards will be injected here by renderChallengeQueue() -->
+                        <div class="text-center py-8 text-gray-500">Loading pending challenges...</div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (Standardized) -->
+    <footer class="bg-eco-dark text-white mt-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div>
+                    <h4 class="font-bold mb-4">EcoQuest</h4>
+                    <p class="text-sm text-gray-400">Learn. Act. Sustain.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="about_impact.html" class="text-gray-400 hover:text-white">About Us</a></li>
+                        <li><a href="teacher_portal.html" class="text-gray-400 hover:text-white">For Teachers</a></li>
+                        <li><a href="emergency_helplines.html" class="text-gray-400 hover:text-white">Helplines</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Support</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="index.html#contact" class="text-gray-400 hover:text-white">Contact</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-4">Join Our Newsletter</h4>
+                    <form onsubmit="event.preventDefault(); alert('Newsletter signup simulated. Thank you!');">
+                        <input type="email" placeholder="Your Email" class="w-full px-3 py-2 rounded-lg text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-eco-green mb-3" required>
+                        <button type="submit" class="w-full py-2 eco-green text-white font-semibold rounded-lg hover:bg-eco-dark transition duration-300 shadow-md">Subscribe</button>
+                    </form>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-500">
+                &copy; 2025 EcoQuest Platform. All rights reserved. Aligned with NEP 2020.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

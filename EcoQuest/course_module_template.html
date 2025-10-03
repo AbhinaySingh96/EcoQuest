@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 3: Renewable Energy Basics | EcoQuest</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            scroll-behavior: smooth;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #34d399; border-radius: 10px; }
+        .eco-shadow { box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1), 0 4px 6px -2px rgba(16, 185, 129, 0.05); }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'eco-green': '#10b981', 'eco-blue': '#3b82f6',
+                        'eco-dark': '#065f46', 'eco-earth': '#b8a37e',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-gray-800">
+
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-md">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            <a href="index.html" class="text-2xl font-extrabold text-eco-dark flex items-center">
+                <svg class="w-6 h-6 mr-2 text-eco-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.208 5 7.5 5A4.5 4.5 0 003 9.5c0 1.488.397 2.942 1.054 4.195 1.54 2.89 4.385 4.904 7.29 5.549 2.906-.645 5.75-2.66 7.29-5.549.657-1.253 1.054-2.707 1.054-4.195A4.5 4.5 0 0016.5 5c-1.708 0-3.332.477-4.5 1.253z"></path></svg>
+                EcoQuest
+            </a>
+            
+            <!-- Desktop Menu -->
+            <div class="hidden lg:flex space-x-6 text-sm font-medium">
+                <a href="index.html" class="text-gray-600 hover:text-eco-green transition duration-300">Home</a>
+                <a href="about_impact.html" class="text-gray-600 hover:text-eco-green transition duration-300">About & Impact</a>
+                <a href="student_dashboard.html" class="text-gray-600 hover:text-eco-green transition duration-300">Dashboard</a>
+                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green transition duration-300">Teachers Portal</a>
+                <a href="emergency_helplines.html" class="text-gray-600 hover:text-eco-green transition duration-300">Helplines</a>
+            </div>
+
+            <a href="student_dashboard.html" class="px-4 py-2 bg-eco-blue text-white text-sm font-semibold rounded-full hover:bg-blue-600 transition duration-300 eco-shadow">
+                Back to Dashboard
+            </a>
+
+            <!-- Mobile Menu Button (Hamburger) - Omitted for brevity in this single-purpose file, but included if needed. -->
+        </nav>
+    </header>
+
+    <main>
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            
+            <!-- Module Header & Progress Bar -->
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl mb-12 border-t-4 border-eco-green">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                    <h1 class="text-3xl font-bold text-eco-dark">Module 3: Powering India Green</h1>
+                    <div class="flex items-center mt-3 sm:mt-0">
+                        <span class="text-lg font-bold text-yellow-600 mr-4 flex items-center">
+                            <svg class="w-6 h-6 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.071 3.29a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.838l-2.8 2.03a1 1 0 00-.364 1.118l1.071 3.29c.3.921-.755 1.688-1.54 1.118l-2.8-2.03a1 1 0 00-1.175 0l-2.8 2.03c-.784.57-1.84-.197-1.54-1.118l1.07-3.29a1 1 0 00-.364-1.118l-2.8-2.03c-.783-.598-.38-1.838.588-1.838h3.461a1 1 0 00.951-.69l1.07-3.29z"></path></svg>
+                            Reward: 1500 Eco-Points
+                        </span>
+                        <span id="badge-status" class="px-3 py-1 bg-eco-blue text-white rounded-full text-sm font-semibold">Badge: Solar Savvy</span>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mt-4">
+                    <div class="text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                        <span>Module Progress:</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div id="progress-bar" class="bg-eco-green h-3 rounded-full transition-all duration-500 ease-in-out" style="width: 0%;"></div>
+                    </div>
+                    <div id="module-status" class="text-center text-sm mt-2 font-bold text-gray-500">
+                        Status: Start the Lesson below.
+                    </div>
+                </div>
+            </div>
+
+            <!-- --- SECTION 1: THE LESSON --- -->
+            <section id="lesson" class="p-6 md:p-8 bg-white rounded-2xl shadow-md mb-8">
+                <h2 class="text-2xl font-bold text-eco-green mb-4 border-b pb-2">1. The Power of the Sun & Wind</h2>
+                <p class="text-gray-700 mb-4">
+                    India is blessed with abundant sunshine (over 300 sunny days a year!) and a vast coastline suitable for wind power. Renewable energy isn't just about saving the planet; it's about **energy independence** and creating a stable future. Read the key points below:
+                </p>
+                <ul class="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                    <li>**Solar Power:** Solar panels convert sunlight directly into electricity. This is crucial for remote villages and reducing load on the national grid.</li>
+                    <li>**Wind Power:** Wind turbines convert kinetic energy from the wind into rotational energy, which is then used to generate power.</li>
+                    <li>**Challenge:** Fossil fuels (coal, oil) are finite and release greenhouse gases. Renewables are infinite and clean.</li>
+                </ul>
+                <div class="mt-6 text-center">
+                    <button onclick="markLessonComplete()" class="px-6 py-3 bg-eco-green text-white font-semibold rounded-full hover:bg-eco-dark transition duration-300">
+                        Lesson Read (Mark 33% Complete)
+                    </button>
+                </div>
+            </section>
+
+            <!-- --- NEW SECTION: ASK ECO-EXPERT (AI DEEP DIVE) --- -->
+            <section id="expert-qa" class="p-6 md:p-8 bg-eco-green/10 rounded-2xl shadow-md mb-8">
+                <h2 class="text-2xl font-bold text-eco-dark mb-4 border-b pb-2 flex items-center">
+                    <span class="text-3xl mr-2">✨</span> Ask the Eco-Expert (Deep Dive Q&A)
+                </h2>
+                <p class="text-gray-700 mb-4">Have a complex question about renewable energy in India? Ask our AI expert for an up-to-date, grounded response.</p>
+                
+                <form onsubmit="handleExpertQuery(event)" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                    <input type="text" id="expert-question-input" placeholder="E.g., What are the challenges for wind energy expansion in South India?" required
+                           class="flex-grow p-3 border border-eco-green rounded-lg focus:ring-eco-green focus:border-eco-green">
+                    <button type="submit" id="expert-query-button" class="px-6 py-3 bg-eco-green text-white font-bold rounded-lg hover:bg-eco-dark transition duration-300">
+                        Ask Expert
+                    </button>
+                </form>
+                
+                <div id="expert-output" class="mt-6 p-4 bg-white rounded-lg border border-eco-green/30">
+                    <p class="text-gray-500">The expert's answer and sources will appear here after your query.</p>
+                </div>
+            </section>
+
+            <!-- --- SECTION 2: KNOWLEDGE CHECK (QUIZ) --- -->
+            <section id="quiz" class="p-6 md:p-8 bg-white rounded-2xl shadow-md mb-8 opacity-50 pointer-events-none">
+                <h2 class="text-2xl font-bold text-eco-blue mb-6 border-b pb-2">2. Knowledge Check (Quiz) - Earn 500 Pts</h2>
+                
+                <form id="quiz-form" onsubmit="handleQuizSubmit(event)">
+                    <div class="space-y-6">
+                        <!-- Question 1 -->
+                        <div class="p-4 bg-blue-50/70 rounded-lg border border-blue-200">
+                            <p class="font-semibold text-gray-800 mb-3">Q1: Which fuel source is considered non-renewable?</p>
+                            <label class="block mb-2"><input type="radio" name="q1" value="A" class="mr-2 text-eco-blue"> A) Solar Energy</label>
+                            <label class="block mb-2"><input type="radio" name="q1" value="B" class="mr-2 text-eco-blue"> B) Wind Energy</label>
+                            <label class="block mb-2"><input type="radio" name="q1" value="C" class="mr-2 text-eco-blue" data-correct="true"> C) Coal</label>
+                        </div>
+                        
+                        <!-- Question 2 -->
+                        <div class="p-4 bg-blue-50/70 rounded-lg border border-blue-200">
+                            <p class="font-semibold text-gray-800 mb-3">Q2: What is the main benefit of decentralized solar power in India?</p>
+                            <label class="block mb-2"><input type="radio" name="q2" value="A" class="mr-2 text-eco-blue" data-correct="true"> A) Provides energy to remote areas</label>
+                            <label class="block mb-2"><input type="radio" name="q2" value="B" class="mr-2 text-eco-blue"> B) Makes the sky look prettier</label>
+                            <label class="block mb-2"><input type="radio" name="q2" value="C" class="mr-2 text-eco-blue"> C) Lowers the cost of cars</label>
+                        </div>
+                        
+                        <!-- Question 3 -->
+                        <div class="p-4 bg-blue-50/70 rounded-lg border border-blue-200">
+                            <p class="font-semibold text-gray-800 mb-3">Q3: What process do solar panels use to generate electricity?</p>
+                            <label class="block mb-2"><input type="radio" name="q3" value="A" class="mr-2 text-eco-blue"> A) Combustion</label>
+                            <label class="block mb-2"><input type="radio" name="q3" value="B" class="mr-2 text-eco-blue" data-correct="true"> B) Photovoltaic Effect</label>
+                            <label class="block mb-2"><input type="radio" name="q3" value="C" class="mr-2 text-eco-blue"> C) Hydrolysis</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="quiz-submit-btn" class="mt-8 px-6 py-3 w-full bg-eco-blue text-white font-bold rounded-lg hover:bg-blue-600 transition duration-300">
+                        Submit Quiz & Claim Points
+                    </button>
+                    <p id="quiz-status" class="mt-4 text-center font-semibold"></p>
+                </form>
+            </section>
+
+            <!-- --- SECTION 3: ACTION CHALLENGE --- -->
+            <section id="action-challenge" class="p-6 md:p-8 bg-white rounded-2xl shadow-md mb-8 opacity-50 pointer-events-none">
+                <h2 class="text-2xl font-bold text-eco-green mb-6 border-b pb-2">3. Action Challenge: Energy Audit - Earn 1000 Pts</h2>
+                
+                <p class="text-gray-700 mb-4">
+                    **Your Mission:** Identify three ways your family can reduce electricity consumption at home this week (e.g., switching to LED, unplugging idle electronics).
+                </p>
+                <ul class="list-disc list-inside space-y-2 text-gray-600 ml-4 mb-6">
+                    <li>**Step 1:** Implement the three changes.</li>
+                    <li>**Step 2:** Write a short report on the impact or difficulty.</li>
+                    <li>**Step 3:** Upload a photograph of one implemented change (e.g., the LED bulb box or an unplugged device).</li>
+                </ul>
+
+                <form id="action-form" onsubmit="handleActionSubmit(event)">
+                    <div class="mb-4">
+                        <label for="report" class="block text-sm font-medium text-gray-700 mb-2">Short Report (What did you change?)</label>
+                        <textarea id="report" rows="3" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-eco-green focus:border-eco-green"></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label for="photo" class="block text-sm font-medium text-gray-700 mb-2">Upload Proof Photo (Simulated)</label>
+                        <input type="file" id="photo" accept="image/*" required class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-eco-green/10 file:text-eco-dark hover:file:bg-eco-green/20">
+                        <p class="text-xs text-gray-500 mt-1">Note: This file upload is currently a simulation.</p>
+                    </div>
+                    <button type="submit" id="action-submit-btn" class="px-6 py-3 w-full bg-eco-green text-white font-bold rounded-lg hover:bg-eco-dark transition duration-300">
+                        Submit Action Proof for Review
+                    </button>
+                    <p id="action-status" class="mt-4 text-center font-semibold"></p>
+                </form>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-eco-dark text-white pt-12 pb-8">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-400">&copy; 2024 EcoQuest. Gamified Learning Module.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic for Module Functionality -->
+    <script>
+        let moduleProgress = 0;
+        const totalPoints = 1500;
+        const quizPoints = 500;
+        const actionPoints = 1000;
+
+        const quizCorrectAnswers = {
+            'q1': 'C', 
+            'q2': 'A', 
+            'q3': 'B'
+        };
+
+        // --- Core UI Update Functions ---
+
+        function updateProgress(percentage, statusText, color = 'text-gray-500') {
+            moduleProgress = Math.min(100, percentage);
+            document.getElementById('progress-bar').style.width = moduleProgress + '%';
+            document.getElementById('progress-percent').textContent = moduleProgress + '%';
+            document.getElementById('module-status').textContent = 'Status: ' + statusText;
+            document.getElementById('module-status').className = 'text-center text-sm mt-2 font-bold ' + color;
+
+            if (moduleProgress >= 100) {
+                document.getElementById('badge-status').textContent = 'BADGE UNLOCKED!';
+                document.getElementById('badge-status').classList.remove('bg-eco-blue');
+                document.getElementById('badge-status').classList.add('bg-yellow-500');
+            }
+        }
+
+        function unlockSection(sectionId, unlock = true) {
+            const section = document.getElementById(sectionId);
+            if (unlock) {
+                section.classList.remove('opacity-50', 'pointer-events-none');
+                section.classList.add('transition', 'duration-500');
+            } else {
+                 section.classList.add('opacity-50', 'pointer-events-none');
+                 section.classList.remove('transition', 'duration-500');
+            }
+        }
+
+        // --- Step 1: Lesson Completion ---
+
+        window.markLessonComplete = function() {
+            if (moduleProgress < 33) {
+                updateProgress(33, 'Lesson Complete! Proceed to the Knowledge Check.', 'text-eco-green');
+                unlockSection('quiz', true);
+            }
+        };
+
+        // --- NEW: GEMINI AI EXPERT Q&A LOGIC ---
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`;
+
+        const askEcoExpert = async (question) => {
+            const apiKey = "";
+            const expertButton = document.getElementById('expert-query-button');
+            const outputArea = document.getElementById('expert-output');
+
+            expertButton.disabled = true;
+            outputArea.innerHTML = '<p class="text-center text-eco-blue font-medium p-4"><svg class="animate-spin inline-block h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Consulting Eco-Expert with Google Search...</p>';
+
+            const systemPrompt = `You are the EcoQuest Deep Dive Expert. You specialize in answering complex student questions about renewable energy and sustainability in the context of India. Your answers must be detailed, factual, and based on Google Search results. Provide a concise, educational response.`;
+            const userQuery = `Deep dive question: "${question}". Ensure your answer is grounded in current data about India.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetch(GEMINI_API_URL + apiKey, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, the expert is busy. Please try another question.";
+                
+                let outputHtml = renderMarkdown(text);
+                
+                // Extract and display sources
+                const groundingMetadata = result.candidates?.[0]?.groundingMetadata;
+                if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                    const sources = groundingMetadata.groundingAttributions
+                        .map(attr => attr.web?.title ? `<li class="text-xs text-gray-500 hover:text-eco-blue"><a href="${attr.web.uri}" target="_blank">${attr.web.title}</a></li>` : '')
+                        .filter(s => s)
+                        .join('');
+                    if (sources) {
+                        outputHtml += `<div class="mt-4 p-3 bg-gray-50 rounded-lg border-t border-eco-green/50"><p class="font-semibold text-sm mb-1 text-eco-dark">Sources Used:</p><ul class="list-none space-y-1">${sources}</ul></div>`;
+                    }
+                }
+
+                outputArea.innerHTML = outputHtml;
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                outputArea.innerHTML = `<p class="text-red-500 font-bold p-4 bg-red-100 rounded-xl">Error: Could not reach the Eco-Expert. Check network or console for details.</p>`;
+            } finally {
+                expertButton.disabled = false;
+            }
+        };
+
+        window.handleExpertQuery = (event) => {
+            event.preventDefault();
+            const questionInput = document.getElementById('expert-question-input');
+            const question = questionInput.value.trim();
+            if (question) {
+                askEcoExpert(question);
+                questionInput.value = ''; // Clear input after submission
+            }
+        };
+
+        const renderMarkdown = (markdownText) => {
+            // Simple markdown rendering for presentation
+            let html = markdownText
+                .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold mt-4 mb-2 text-eco-blue">$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-4 mb-2 text-eco-dark">$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-extrabold mt-4 mb-2 text-eco-green">$1</h1>')
+                .replace(/^\* (.*$)/gim, '<li class="ml-6 list-disc text-gray-700">$1</li>')
+                .replace(/^\- (.*$)/gim, '<li class="ml-6 list-disc text-gray-700">$1</li>')
+                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/gim, '<em>$1</em>');
+            return `<div class="prose max-w-none text-gray-700">${html}</div>`;
+        };
+
+        // --- Step 2: Quiz Submission ---
+
+        window.handleQuizSubmit = function(event) {
+            event.preventDefault();
+
+            if (moduleProgress < 33) return; // Must complete lesson first.
+
+            let score = 0;
+            const form = document.getElementById('quiz-form');
+            const statusElement = document.getElementById('quiz-status');
+            const totalQuestions = Object.keys(quizCorrectAnswers).length;
+
+            try {
+                // Check all answers
+                for (let i = 1; i <= totalQuestions; i++) {
+                    const questionName = `q${i}`;
+                    const selected = form.querySelector(`input[name="${questionName}"]:checked`);
+                    
+                    if (selected && selected.getAttribute('data-correct') === 'true') {
+                        score++;
+                    }
+                }
+                
+                const minPassingScore = 2; // Pass if 2 out of 3 correct
+                
+                if (score >= minPassingScore) {
+                    const earnedPoints = Math.round((score / totalQuestions) * quizPoints);
+                    statusElement.textContent = `Success! You scored ${score}/${totalQuestions}. Earned ${earnedPoints} Eco-Points!`;
+                    statusElement.classList.remove('text-red-500');
+                    statusElement.classList.add('text-eco-green');
+                    
+                    // Prevent resubmission
+                    form.querySelector('#quiz-submit-btn').disabled = true;
+                    unlockSection('quiz', false);
+
+                    // Update progress (33% + 33% = 66%)
+                    updateProgress(66, 'Quiz Passed! Now complete the Action Challenge.', 'text-eco-blue');
+                    unlockSection('action-challenge', true);
+
+                } else {
+                    statusElement.textContent = `Attempt failed. Score: ${score}/${totalQuestions}. Review the lesson and try again!`;
+                    statusElement.classList.remove('text-eco-green');
+                    statusElement.classList.add('text-red-500');
+                }
+
+            } catch (error) {
+                statusElement.textContent = 'Please answer all questions.';
+                statusElement.classList.add('text-red-500');
+            }
+        };
+
+        // --- Step 3: Action Challenge Submission (Simulation) ---
+
+        window.handleActionSubmit = function(event) {
+            event.preventDefault();
+            
+            if (moduleProgress < 66) return; // Must pass quiz first.
+
+            const report = document.getElementById('report').value.trim();
+            const photo = document.getElementById('photo').files.length;
+            const statusElement = document.getElementById('action-status');
+            const button = document.getElementById('action-submit-btn');
+
+            if (report.length < 20 || photo === 0) {
+                 statusElement.textContent = 'Please write a brief report and upload a proof image.';
+                 statusElement.classList.add('text-red-500');
+                 return;
+            }
+
+            // Simulate submission process (e.g., sending data to Firestore)
+            button.disabled = true;
+            statusElement.innerHTML = `<span class="loading-ring mr-2" style="border-top-color: #10b981;"></span> Submitting proof...`;
+            statusElement.classList.remove('text-red-500');
+            statusElement.classList.add('text-gray-500');
+
+            setTimeout(() => {
+                // Simulation of successful submission for review
+                statusElement.textContent = 'Proof Submitted! Waiting for teacher review. (1000 Pts pending)';
+                statusElement.classList.remove('text-gray-500');
+                statusElement.classList.add('text-orange-500');
+                
+                // Final completion simulation (since verification is manual and asynchronous)
+                updateProgress(100, 'Module Complete! Reward pending review.', 'text-yellow-600');
+                unlockSection('action-challenge', false); // Lock the section after submission
+
+                // Redirect user back to dashboard after a delay to show success
+                setTimeout(() => {
+                    // In a real app, this would update Firestore and redirect.
+                    window.location.href = 'student_dashboard.html?module=completed&points=1500'; 
+                }, 3000);
+
+            }, 2000);
+        };
+
+        // Initialize state on load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Start at Lesson stage
+            unlockSection('quiz', false);
+            unlockSection('action-challenge', false);
+            updateProgress(0, 'Start the Lesson below to begin the module.');
+        });
+    </script>
+</body>
+</html>
