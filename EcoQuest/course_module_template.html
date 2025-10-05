@@ -43,15 +43,17 @@
             
             <!-- Desktop Menu -->
             <div class="hidden lg:flex space-x-6 text-sm font-medium">
-                <a href="index.html" class="text-gray-600 hover:text-eco-green transition duration-300">Home</a>
-                <a href="about_impact.html" class="text-gray-600 hover:text-eco-green transition duration-300">About & Impact</a>
-                <a href="student_dashboard.html" class="text-gray-600 hover:text-eco-green transition duration-300">Dashboard</a>
-                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green transition duration-300">Teachers Portal</a>
-                <a href="emergency_helplines.html" class="text-gray-600 hover:text-eco-green transition duration-300">Helplines</a>
+                 <a href="index.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Home</a>
+                <a href="about_impact.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">About Us</a>
+                <a href="course_module_template.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Students</a>
+                <a href="teacher_portal.html" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Teachers</a>
+                <a href="emergency_helplines.html" class="text-red-500 hover:text-red-700 font-bold py-1" onclick="window.toggleMobileMenu()">Helplines</a>
+                <a href="#contact" class="text-gray-600 hover:text-eco-green py-1" onclick="window.toggleMobileMenu()">Contact</a>
+              
             </div>
 
-            <a href="student_dashboard.html" class="px-4 py-2 bg-eco-blue text-white text-sm font-semibold rounded-full hover:bg-blue-600 transition duration-300 eco-shadow">
-                Back to Dashboard
+            <a href="student_dashboard.html" class="hidden sm:block px-4 py-2 bg-eco-green text-white text-sm font-semibold rounded-full hover:bg-eco-dark transition duration-300 eco-shadow">
+                Go to Dashboard
             </a>
 
             <!-- Mobile Menu Button (Hamburger) - Omitted for brevity in this single-purpose file, but included if needed. -->
